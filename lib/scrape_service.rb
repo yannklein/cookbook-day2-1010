@@ -8,27 +8,26 @@ class ScrapeService
   end
 
   def call
-    url = "https://www.allrecipes.com/search/results/?search=#{@keyword}"
+    url = "https://www.foodnetwork.com/search/#{@keyword}"
     html_doc = URI.open(url).read
     # 3. parse the html
     parsed_html = Nokogiri::HTML(html_doc)
     # 4. find first five recipes in the results
-    results = parsed_html.search('.card__detailsContainer').first(5).map do |card|
-      name = card.search('.card__title').text.strip
+    results = parsed_html.search('.o-RecipeResult.o-ResultCard').first(5).map do |card|
+      name = card.search('.m-MediaBlock__a-HeadlineText').text.strip
       description = card.search('.card__summary').text.strip
-      rating = card.search('.review-star-text').text.strip.split(' ')[1]
+      prep_time = card.search('.o-RecipeInfo__a-Description.a-Description').text.strip
+      rating = card.search('.gig-rating-stars').attribute('title').text.strip.split(' ')[0]
 
       # Look for 'a' tag that has the link to individual recipes
-      recipe_url = card.search('.card__titleLink').first.attribute('href').value
+      recipe_url = card.search('.m-MediaBlock__m-Rating > a').first.attribute('href').value
       # Open the recipe page
-      recipe_html = URI.open(recipe_url)
+      recipe_html =  URI.open("https:" + recipe_url)
       # Parse it
       parsed_recipe_html = Nokogiri::HTML(recipe_html)
       # Look for the element that has prep time information
-      prep_element = parsed_recipe_html.search('.recipe-meta-item').find do |element|
-        element.text.strip.match?(/prep/i) # This will look for an element with text like "Prep ..."
-      end
-      prep_time = prep_element ? prep_element.text.strip.delete_prefix('prep: ') : nil
+      description = parsed_recipe_html.search('.o-Method__m-Body').text.strip.gsub("\n", ' ').squeeze(' ')
+      
       Recipe.new(name, description, rating, prep_time)
     end
 
