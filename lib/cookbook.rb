@@ -22,8 +22,9 @@ class Cookbook
     save
   end
 
-  def mark_as_done(recipe_index) # expects an Integer
-    @recipes[recipe_index].done!
+  def recipe_done!(recipe_index)
+    recipe = @recipes[recipe_index]
+    recipe.done = true
     save
   end
 
@@ -31,19 +32,14 @@ class Cookbook
 
   def load
     CSV.foreach(@csv_file) do |row|
-      name = row[0]
-      description = row[1]
-      rating = row[2]
-      status = row[3] == 'true'
-      prep_time = row[4]
-      @recipes << Recipe.new(name, description, rating, status, prep_time)
+      @recipes << Recipe.new(row[0], row[1], row[2], row[3], row[4] == true)
     end
   end
 
   def save
     CSV.open(@csv_file, 'wb') do |csv|
       @recipes.each do |recipe|
-        csv << [recipe.name, recipe.description, recipe.rating, recipe.status, recipe.prep_time]
+        csv << [recipe.name, recipe.description, recipe.prep_time, recipe.rating, recipe.done?]
       end
     end
   end

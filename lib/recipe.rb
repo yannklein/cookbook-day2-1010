@@ -1,15 +1,16 @@
 class Recipe
-  attr_reader :name, :description, :rating, :status, :prep_time
+  attr_reader :name, :description, :rating, :prep_time
+  attr_writer :done
 
-  def initialize(name, description, rating, status = false, prep_time)
+  def initialize(name, description, prep_time, rating = nil, done = false)
     @name = name
     @description = description
+    @done = done
     @rating = rating
-    @status = status
     @prep_time = prep_time
   end
 
-  def done!
-    @status = true
+  def done?
+    @done
   end
 end

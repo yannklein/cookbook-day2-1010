@@ -1,6 +1,6 @@
 require 'open-uri'
 require 'nokogiri'
-require_relative 'recipe'
+
 
 class ScrapeService
   def initialize(keyword)
@@ -8,29 +8,33 @@ class ScrapeService
   end
 
   def call
-    url = "https://www.foodnetwork.com/search/#{@keyword}"
+    url = "https://www.foodnetwork.com/search/#{@keyword}-"
     html_doc = URI.open(url).read
-    # 3. parse the html
     parsed_html = Nokogiri::HTML(html_doc)
-    # 4. find first five recipes in the results
-    results = parsed_html.search('.o-RecipeResult.o-ResultCard').first(5).map do |card|
-      name = card.search('.m-MediaBlock__a-HeadlineText').text.strip
-      description = card.search('.card__summary').text.strip
-      prep_time = card.search('.o-RecipeInfo__a-Description.a-Description').text.strip
-      rating = card.search('.gig-rating-stars').attribute('title').text.strip.split(' ')[0]
 
-      # Look for 'a' tag that has the link to individual recipes
-      recipe_url = card.search('.m-MediaBlock__m-Rating > a').first.attribute('href').value
-      # Open the recipe page
-      recipe_html =  URI.open("https:" + recipe_url)
-      # Parse it
-      parsed_recipe_html = Nokogiri::HTML(recipe_html)
-      # Look for the element that has prep time information
-      description = parsed_recipe_html.search('.o-Method__m-Body').text.strip.gsub("\n", ' ').squeeze(' ')
-      
-      Recipe.new(name, description, rating, prep_time)
+    recipe_infos = []
+
+    # Recipes page
+    # scrape each recipes
+    # for each of them
+    parsed_html.search('.o-RecipeResult.o-ResultCard').first(5).each do |recipe_card|
+      # get the name
+      name = recipe_card.search('.m-MediaBlock__a-HeadlineText').text.strip
+      # get the prep_time
+      prep_time = recipe_card.search('.o-RecipeInfo__a-Description.a-Description').text.strip
+      # get the rating
+      rating = recipe_card.search('.gig-rating-stars').attribute('title').value.split(" ")[0]
+      # get the details page url
+      details_url = "https:" + recipe_card.search('.m-MediaBlock__m-Rating a').attribute('href').value
+      # scrape the details page
+      details_html_doc = URI.open(details_url).read
+      details_parsed_html = Nokogiri::HTML(details_html_doc)
+      # get the description
+      description = details_parsed_html.search('.o-Method__m-Body').text.gsub("\n", " ").squeeze(" ").strip
+
+      recipe_infos << {name: name, prep_time: prep_time, rating: rating, url: details_url, description: description}
     end
 
-    return results
+    recipe_infos
   end
 end

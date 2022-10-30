@@ -17,15 +17,12 @@ class Controller
 
   def create
     # 1. ask for the name
-    name = @view.ask_for('name')
+    name = @view.ask_for(:name)
     # 2. ask for description
-    description = @view.ask_for('description')
-    # 3. Ask user to rate the recipe
-    rating = @view.ask_for('rate this out of 5')
-    # 4. ask user for prep time
-    prep_time = @view.ask_for("How long does it take to cook this?")
-    # 4. instanciate recipe using the infomation above
-    recipe = Recipe.new(name, description, rating, prep_time)
+    description = @view.ask_for(:description)
+    # 3. ask for prep_time
+    prep_time = @view.ask_for(:prep_time)
+    recipe = Recipe.new(name, description, prep_time)
     # 5. save the new recipe to the cookbook
     @cookbook.add_recipe(recipe)
   end
@@ -34,32 +31,45 @@ class Controller
     # 1. display the recipes
     list
     # 2. ask for index
-    index = @view.ask_for('number').to_i - 1
+    index = @view.ask_for(:number).to_i - 1
     # 3. remove the chosen recipe from the cookbook
     @cookbook.remove_recipe(index)
   end
 
   def import
-    # 1. ask the user for the keyword
-    keyword = @view.ask_for("Type the keyword for the recipe you want to import")
-    # 2. open the html using the keywod
-    results = ScrapeService.new(keyword).call
-    # 5. display the 5 results
-    @view.display(results)
-    # 6. ask user for which one to import
-    choice = @view.ask_for("Which recipe do you want to import (give number)").to_i - 1
-    recipe = results[choice]
-    # 7. save the chosen recipe to the cookbook
+    # ask the view to get keyword (string) from user
+    keyword = @view.ask_for(:keyword)
+    # scrape 5 recipes (array of instances of Recipe) from keyword
+    scrape_service = ScrapeService.new(keyword)
+    recipe_infos = scrape_service.call
+    # create array of recipe instances
+    recipes = recipe_infos.map do |recipe_info| 
+      Recipe.new(
+        recipe_info[:name], 
+        recipe_info[:description], 
+        recipe_info[:prep_time],
+        recipe_info[:rating]
+      ) 
+    end
+    # ask the view to display recipes, ask user for an index
+    @view.display(recipes)
+    index = @view.ask_for(:index).to_i - 1
+    # get recipe based on index
+    recipe = recipes[index]
+    # ask cookbook to store the recipe (add_recipe)
     @cookbook.add_recipe(recipe)
+    # list recipes
+    list
   end
 
   def mark_as_done
-    # 1. display the list
+    # 1. display the recipes
     list
-    # 2. ask the user for which recipe to mark
-    choice = @view.ask_for("Which recipe do you want to mark (give number)").to_i - 1
-    # 3. mark the chosen recipe
-    @cookbook.mark_as_done(choice)
-    # 4. save the updated state to cookbook <- this will be handled in mark_as_done method of Cookbook
+    # 2. ask for index
+    index = @view.ask_for(:number).to_i - 1
+    # 3. ask cookbook to mark the chosen recipe as done
+    @cookbook.recipe_done!(index)
+    # 4. list recipes
+    list
   end
 end
